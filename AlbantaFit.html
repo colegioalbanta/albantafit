@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colegio Albanta - Control de Condición Física</title>
+    
+    <!-- Vinculación del archivo Manifest para convertir en App (PWA) -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Configuración específica para comportamiento e interfaz móvil en iOS y Android -->
+    <meta name="theme-color" content="#107c41">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link class="icon-app" rel="apple-touch-icon" href="AlbantaFit.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #0a2540;       /* Azul marino del nuevo escudo */
+            --primary-light: #107c41; /* Verde institucional */
+            --excel-green: #107c41;   
+            --success: #10b981;
+            --danger: #ef4444;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --accent: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            padding: 0;
+            margin: 0;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* DISEÑO TIPO APP WEB */
+        .app-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* CONTENEDOR OPTIMIZADO PARA EL NUEVO LOGO */
+        .school-logo-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 2px solid var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .school-logo-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .app-title h1 {
+            color: var(--primary);
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .app-title p {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        /* CONTENEDOR PRINCIPAL DE LA APP */
+        .app-container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        /* SELECTOR DESPLEGABLE DE TEST (REEMPLAZA LAS PESTAÑAS) */
+        .dropdown-navigation-container {
+            margin-bottom: 25px;
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .dropdown-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .test-dropdown {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            background-color: #f1f5f9;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230a2540' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 18px;
+        }
+
+        .test-dropdown:focus {
+            border-color: var(--primary-light);
+            background-color: var(--surface);
+            box-shadow: 0 0 0 3px rgba(16, 124, 65, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.25s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* CONTENEDORES INTERNOS (CARDS) */
+        .app-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .app-card h2 {
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .app-card h3 {
+            margin-bottom: 15px;
+            color: var(--text);
+            font-size: 1.1rem;
+            border-left: 4px solid var(--primary-light);
+            padding-left: 8px;
+        }
+
+        /* PANEL DE ACCIONES EXCEL */
+        .excel-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px dashed #bbf7d0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .excel-label {
+            font-size: 0.9rem;
+            color: #166534;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-upload-btn input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* BOTONES MODERNOS */
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-prime { background: var(--primary); color: white; }
+        .btn-prime:hover { background: #061726; }
+        .btn-excel-out { background: var(--excel-green); color: white; }
+        .btn-excel-out:hover { background: #0c6233; }
+        .btn-excel-in { background: #e2e8f0; color: #166534; border: 1px solid #bbf7d0; }
+        .btn-excel-in:hover { background: #dcfce7; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #64748b; color: white; }
+        .btn-secondary:hover { background: #475569; }
+
+        /* FORMULARIOS */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background-color: var(--surface);
+            color: var(--text);
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid var(--primary-light);
+            border-color: transparent;
+        }
+
+        /* FILAS DINÁMICAS DE PARTICIPANTES */
+        .participant-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.01);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .counter-badge {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 8px;
+            min-width: 55px;
+            text-align: center;
+            display: inline-block;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 6px;
+            color: var(--primary-light);
+        }
+
+        .controls-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* TABLAS DE HISTORIAL */
+        .log-table-container {
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+        }
+
+        .log-table th, .log-table td {
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .log-table th {
+            background: #f8fafc;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--danger);
+            padding: 4px 8px;
+            font-size: 0.85rem;
+        }
+        .delete-btn:hover {
+            background: #fee2e2;
+            border-radius: 4px;
+        }
+
+        /* CRONÓMETROS */
+        .timer-display {
+            font-size: 3.8rem;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin: 15px 0;
+            font-weight: bold;
+            color: var(--text);
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 10px;
+            letter-spacing: 2px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="brand-container">
+            <div class="school-logo-wrapper">
+                <img src="AlbantaFit.png" onerror="this.src='https://placehold.co/100x100/0a2540/ffffff/png?text=Albanta'" alt="Logo Colegio Albanta">
+            </div>
+            <div class="app-title">
+                <h1>COLEGIO ALBANTA</h1>
+                <p>Aplicación Web Oficial de Control de Condición Física</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- MENÚ DESPLEGABLE INTERACTIVO -->
+        <div class="dropdown-navigation-container">
+            <label for="test-selector" class="dropdown-label">Selecciona el Test a Evaluar:</label>
+            <select id="test-selector" class="test-dropdown" onchange="navigateWithDropdown(this.value)">
+                <option value="cooper">🏃 Test Cooper (12 Minutos)</option>
+                <option value="navette">🔊 Course-Navette</option>
+                <option value="balon">🥎 Lanzamiento de Balón Medicinal</option>
+                <option value="velocidad">⚡ Test de Velocidad</option>
+                <option value="flexibilidad">🧘 Test de Flexibilidad</option>
+            </select>
+        </div>
+
+        <section id="cooper" class="tab-content active">
+            <div class="app-card">
+                <h2>Test de Cooper (12 Minutos)</h2>
+                <div class="excel-zone">
+                    <span class="excel-label">📊 Gestión de Alumnos desde Excel:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="file-upload-btn">
+                            <button class="btn-excel-in">📂 Cargar Listado (.xlsx)</button>
+                            <input type="file" accept=".xlsx, .xls" onchange="importFromExcel(this, 'cooper')">
+                        </div>
+                        <button class="btn-excel-out" onclick="exportToExcel('cooper')">📥 Extraer Resultados (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="timer-display" id="cooper-timer">12:00</div>
+                <div class="btn-group" style="justify-content: center;">
+                    <button class="btn-success" onclick="startCooper()">Iniciar Tiempo</button>
+                    <button class="btn-danger" onclick="pauseCooper()">Pausar</button>
+                    <button class="btn-secondary" onclick="resetCooper()">Reiniciar</button>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Contador Manual de Vueltas</h3>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <input type="text" id="cooper-name" placeholder="Nombre completo del alumno">
+                    <button class="btn-prime" onclick="addCooperParticipant()">Añadir</button>
+                </div>
+                <div id="cooper-participants-list"></div>
+            </div>
+        </section>
+
+        <section id="navette" class="tab-content">
+            <div class="app-card">
+                <h2>Test de Course-Navette</h2>
+                <div class="excel-zone">
+                    <span class="excel-label">📊 Gestión de Alumnos desde Excel:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="file-upload-btn">
+                            <button class="btn-excel-in">📂 Cargar Listado (.xlsx)</button>
+                            <input type="file" accept=".xlsx, .xls" onchange="importFromExcel(this, 'navette')">
+                        </div>
+                        <button class="btn-excel-out" onclick="exportToExcel('navette')">📥 Extraer Resultados (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Palieres e Intervalos Reglamentarios (0.5 a 20)</h3>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <input type="text" id="navette-name" placeholder="Nombre completo del alumno">
+                    <button class="btn-prime" onclick="addNavetteParticipant()">Añadir</button>
+                </div>
+                <div id="navette-participants-list"></div>
+            </div>
+        </section>
+
+        <section id="balon" class="tab-content">
+            <div class="app-card">
+                <h2>Lanzamiento de Balón Medicinal</h2>
+                <div class="excel-zone">
+                    <span class="excel-label">📊 Gestión de Alumnos desde Excel:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="file-upload-btn">
+                            <button class="btn-excel-in">📂 Cargar Listado (.xlsx)</button>
+                            <input type="file" accept=".xlsx, .xls" onchange="importFromExcel(this, 'balon')">
+                        </div>
+                        <button class="btn-excel-out" onclick="exportToExcel('balon')">📥 Extraer Resultados (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Registrar Lanzamiento</h3>
+                <div class="form-group">
+                    <label>Nombre del Alumno:</label>
+                    <input type="text" id="balon-nombre" placeholder="Ej: Carlos Gómez">
+                </div>
+                <div class="form-group">
+                    <label>Peso del Balón Medicinal:</label>
+                    <select id="balon-peso">
+                        <option value="1kg">1 kg</option>
+                        <option value="2kg">2 kg</option>
+                        <option value="3kg">3 kg</option>
+                        <option value="4kg">4 kg</option>
+                        <option value="5kg">5 kg</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Distancia Lograda (metros):</label>
+                    <input type="number" id="balon-distancia" step="0.01" placeholder="Ej: 5.85">
+                </div>
+                <button class="btn-prime" onclick="saveBalon()">Guardar Marca</button>
+            </div>
+
+            <div class="app-card">
+                <h3>Registro General de Marcas</h3>
+                <div class="log-table-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>Participante</th>
+                                <th>Peso Balon</th>
+                                <th>Distancia (m)</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balon-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="velocidad" class="tab-content">
+            <div class="app-card">
+                <h2>Test de Velocidad</h2>
+                <div class="excel-zone">
+                    <span class="excel-label">📊 Gestión de Alumnos desde Excel:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="file-upload-btn">
+                            <button class="btn-excel-in">📂 Cargar Listado (.xlsx)</button>
+                            <input type="file" accept=".xlsx, .xls" onchange="importFromExcel(this, 'velocidad')">
+                        </div>
+                        <button class="btn-excel-out" onclick="exportToExcel('velocidad')">📥 Extraer Resultados (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Configuración del Sprint</h3>
+                <div class="form-group">
+                    <label>Nombre del Alumno:</label>
+                    <input type="text" id="velocidad-nombre" placeholder="Ej: Laura Martínez">
+                </div>
+                <div class="form-group">
+                    <label>Distancia Elegida:</label>
+                    <select id="velocidad-distancia">
+                        <option value="50m">50 metros</option>
+                        <option value="100m">100 metros</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="timer-display" id="vel-timer">00:00.00</div>
+                <div class="btn-group" style="justify-content: center;">
+                    <button class="btn-success" id="btn-vel-start" onclick="toggleVelocidad()">INICIAR / PARAR</button>
+                    <button class="btn-secondary" onclick="resetVelocidad()">Reiniciar</button>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Historial de Sprints</h3>
+                <div class="log-table-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>Atleta</th>
+                                <th>Distancia</th>
+                                <th>Tiempo Obtenido</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="velocidad-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="flexibilidad" class="tab-content">
+            <div class="app-card">
+                <h2>Test de Flexibilidad</h2>
+                <div class="excel-zone">
+                    <span class="excel-label">📊 Gestión de Alumnos desde Excel:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <div class="file-upload-btn">
+                            <button class="btn-excel-in">📂 Cargar Listado (.xlsx)</button>
+                            <input type="file" accept=".xlsx, .xls" onchange="importFromExcel(this, 'flexibilidad')">
+                        </div>
+                        <button class="btn-excel-out" onclick="exportToExcel('flexibilidad')">📥 Extraer Resultados (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <h3>Registrar Intento (Sit and Reach)</h3>
+                <div class="form-group">
+                    <label>Nombre del Alumno:</label>
+                    <input type="text" id="flex-nombre" placeholder="Ej: Javier Pérez">
+                </div>
+                <div class="form-group">
+                    <label>Resultado en cm (Usa el signo - si no alcanza la punta de los pies):</label>
+                    <input type="number" id="flex-resultado" step="0.5" placeholder="Ej: +6.5 o -3.0">
+                </div>
+                <button class="btn-prime" onclick="saveFlexibilidad()">Registrar Marca</button>
+            </div>
+
+            <div class="app-card">
+                <h3>Historial de Flexibilidad</h3>
+                <div class="log-table-container">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th>Atleta</th>
+                                <th>Resultado (cm)</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flex-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+<script>
+    // --- MAPAS DE COLUMNAS EXCEL ---
+    const excelHeaders = {
+        cooper: ["Participante", "Vueltas Completadas"],
+        navette: ["Participante", "Tramo Alcanzado"],
+        balon: ["Participante", "Peso Balon", "Distancia (m)"],
+        velocidad: ["Atleta", "Distancia", "Tiempo Obtenido"],
+        flexibilidad: ["Atleta", "Resultado (cm)"]
+    };
+
+    // --- BASE DE DATOS EN MEMORIA ---
+    let dataStore = { cooper: [], navette: [], balon: [], velocidad: [], flexibilidad: [] };
+
+    // --- SISTEMA NAVEGACIÓN DESPLEGABLE ---
+    function navigateWithDropdown(tabName) {
+        const tabcontents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontents.length; i++) {
+            tabcontents[i].classList.remove("active");
+        }
+        document.getElementById(tabName).classList.add("active");
+    }
+
+    // --- MOTOR EXCEL (SheetJS) ---
+    function exportToExcel(testKey) {
+        let rows = dataStore[testKey];
+        if (rows.length === 0) {
+            rows = [Object.fromEntries(excelHeaders[testKey].map(h => [h, ""]))];
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+            XLSX.writeFile(wb, `Plantilla_${testKey}.xlsx`);
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(rows, { header: excelHeaders[testKey] });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+        XLSX.writeFile(wb, `Resultados_${testKey}.xlsx`);
+    }
+
+    function importFromExcel(inputElement, testKey) {
+        const file = inputElement.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const ws = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws);
+                if (rows.length > 0) {
+                    const requiredKey = excelHeaders[testKey][0];
+                    const cleanRows = rows.filter(r => r[requiredKey] !== undefined && r[requiredKey] !== "");
+                    cleanRows.forEach(r => {
+                        if(testKey === 'cooper') r["Vueltas Completadas"] = parseInt(r["Vueltas Completadas"]) || 0;
+                        if(testKey === 'navette') r["Tramo Alcanzado"] = parseFloat(r["Tramo Alcanzado"]) || 0;
+                        if(testKey === 'balon') r["Distancia (m)"] = parseFloat(r["Distancia (m)"]) || 0;
+                        if(testKey === 'flexibilidad') r["Resultado (cm)"] = parseFloat(r["Resultado (cm)"]) || 0;
+                    });
+                    dataStore[testKey] = cleanRows;
+                    renderInterface(testKey);
+                    alert(`¡Cargados con éxito ${cleanRows.length} alumnos en el sistema de control!`);
+                }
+            } catch (err) { alert("Error al analizar el archivo Excel."); }
+        };
+        reader.readAsArrayBuffer(file);
+        inputElement.value = "";
+    }
+
+    function renderInterface(testKey) {
+        if (testKey === 'cooper') renderCooper();
+        if (testKey === 'navette') renderNavette();
+        if (testKey === 'balon') renderBalon();
+        if (testKey === 'velocidad') renderVelocidad();
+        if (testKey === 'flexibilidad') renderFlexibilidad();
+    }
+    function deleteRow(testKey, index) { dataStore[testKey].splice(index, 1); renderInterface(testKey); }
+
+    // COOPER LOGIC
+    let cooperTime = 12 * 60; let cooperInterval = null;
+    function startCooper() {
+        if (cooperInterval) return;
+        cooperInterval = setInterval(() => {
+            if (cooperTime > 0) { cooperTime--; let m = Math.floor(cooperTime / 60); let s = cooperTime % 60; document.getElementById('cooper-timer').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
+            else { clearInterval(cooperInterval); cooperInterval = null; alert("¡Tiempo finalizado!"); }
+        }, 1000);
+    }
+    function pauseCooper() { clearInterval(cooperInterval); cooperInterval = null; }
+    function resetCooper() { pauseCooper(); cooperTime = 12 * 60; document.getElementById('cooper-timer').innerText = "12:00"; }
+    function addCooperParticipant() {
+        const input = document.getElementById('cooper-name'); const name = input.value.trim(); if(!name) return;
+        dataStore.cooper.push({ "Participante": name, "Vueltas Completadas": 0 }); input.value = ''; renderCooper();
+    }
+    function updateCooperLap(i, amt) { dataStore.cooper[i]["Vueltas Completadas"] = Math.max(0, dataStore.cooper[i]["Vueltas Completadas"] + amt); renderCooper(); }
+    function renderCooper() {
+        const list = document.getElementById('cooper-participants-list'); list.innerHTML = '';
+        dataStore.cooper.forEach((p, i) => { list.innerHTML += `<div class="participant-row"><span><strong>${p["Participante"]}</strong></span><div class="controls-wrapper"><button class="btn-danger" style="padding:4px 8px;" onclick="updateCooperLap(${i}, -1)">-1</button><span class="counter-badge">${p["Vueltas Completadas"]}</span><button class="btn-success" style="padding:4px 8px;" onclick="updateCooperLap(${i}, 1)">+1 Vta</button><button class="delete-btn" onclick="deleteRow('cooper', ${i})">❌</button></div></div>`; });
+    }
+
+    // NAVETTE LOGIC
+    function addNavetteParticipant() {
+        const input = document.getElementById('navette-name'); const name = input.value.trim(); if(!name) return;
+        dataStore.navette.push({ "Participante": name, "Tramo Alcanzado": 0.0 }); input.value = ''; renderNavette();
+    }
+    function updateNavetteStage(i, amt) {
+        let n = dataStore.navette[i]["Tramo Alcanzado"] + amt; if (n < 0) n = 0; if (n > 20) n = 20;
+        dataStore.navette[i]["Tramo Alcanzado"] = parseFloat(n.toFixed(1)); renderNavette();
+    }
+    function renderNavette() {
+        const list = document.getElementById('navette-participants-list'); list.innerHTML = '';
+        dataStore.navette.forEach((p, i) => { list.innerHTML += `<div class="participant-row"><span><strong>${p["Participante"]}</strong></span><div class="controls-wrapper"><button class="btn-danger" style="padding:4px 8px;" onclick="updateNavetteStage(${i}, -0.5)">-0.5</button><span class="counter-badge">${p["Tramo Alcanzado"]}</span><button class="btn-success" style="padding:4px 8px;" onclick="updateNavetteStage(${i}, 0.5)">+0.5</button><button class="delete-btn" onclick="deleteRow('navette', ${i})">❌</button></div></div>`; });
+    }
+
+    // BALON MEDICINAL LOGIC
+    function saveBalon() {
+        const n = document.getElementById('balon-nombre').value.trim() || "Anónimo"; const p = document.getElementById('balon-peso').value; const d = document.getElementById('balon-distancia').value; if(!d) return;
+        dataStore.balon.push({ "Participante": n, "Peso Balon": p, "Distancia (m)": parseFloat(d) }); document.getElementById('balon-nombre').value = ''; document.getElementById('balon-distancia').value = ''; renderBalon();
+    }
+    function renderBalon() {
+        const tbody = document.getElementById('balon-log-body'); tbody.innerHTML = '';
+        dataStore.balon.forEach((item, index) => { tbody.innerHTML += `<tr><td><b>${item["Participante"]}</b></td><td><span style="background:#e2e8f0; padding:2px 6px; border-radius:4px;">${item["Peso Balon"]}</span></td><td><b>${item["Distancia (m)"]} m</b></td><td><button class="delete-btn" onclick="deleteRow('balon', ${index})">❌ Eliminar</button></td></tr>`; });
+    }
+
+    // VELOCIDAD LOGIC
+    let velInterval = null; let velStartTime = 0; let velElapsedTime = 0; let velRunning = false;
+    function toggleVelocidad() {
+        if (!velRunning) {
+            velStartTime = Date.now() - velElapsedTime; velInterval = setInterval(() => { velElapsedTime = Date.now() - velStartTime; let ms = velElapsedTime; let min = Math.floor(ms / 60000); let sec = Math.floor((ms % 60000) / 1000); let cent = Math.floor((ms % 1000) / 10); document.getElementById('vel-timer').innerText = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}.${cent.toString().padStart(2,'0')}`; }, 10);
+            velRunning = true; document.getElementById('btn-vel-start').innerText = "DETENER SPRINT"; document.getElementById('btn-vel-start').className = "btn-danger";
+        } else {
+            clearInterval(velInterval); velRunning = false; document.getElementById('btn-vel-start').innerText = "INICIAR SPRINT"; document.getElementById('btn-vel-start').className = "btn-success";
+            const atl = document.getElementById('velocidad-nombre').value.trim() || "Anónimo"; const dist = document.getElementById('velocidad-distancia').value; const t = document.getElementById('vel-timer').innerText;
+            dataStore.velocidad.push({ "Atleta": atl, "Distancia": dist, "Tiempo Obtenido": t }); document.getElementById('velocidad-nombre').value = ''; renderVelocidad();
+        }
+    }
+    function resetVelocidad() { clearInterval(velInterval); velRunning = false; velElapsedTime = 0; document.getElementById('vel-timer').innerText = "00:00.00"; document.getElementById('btn-vel-start').innerText = "INICIAR / PARAR"; document.getElementById('btn-vel-start').className = "btn-success"; }
+    function renderVelocidad() {
+        const tbody = document.getElementById('velocidad-log-body'); tbody.innerHTML = '';
+        dataStore.velocidad.forEach((item, index) => { tbody.innerHTML += `<tr><td><b>${item["Atleta"]}</b></td><td>${item["Distancia"]}</td><td><b>${item["Tiempo Obtenido"]} s</b></td><td><button class="delete-btn" onclick="deleteRow('velocidad', ${index})">❌ Eliminar</button></td></tr>`; });
+    }
+
+    // FLEXIBILIDAD LOGIC
+    function saveFlexibilidad() {
+        const n = document.getElementById('flex-nombre').value.trim() || "Anónimo"; const r = document.getElementById('flex-resultado').value; if(!r) return;
+        dataStore.flexibilidad.push({ "Atleta": n, "Resultado (cm)": parseFloat(r) }); document.getElementById('flex-nombre').value = ''; document.getElementById('flex-resultado').value = ''; renderFlexibilidad();
+    }
+    function renderFlexibilidad() {
+        const tbody = document.getElementById('flex-log-body'); tbody.innerHTML = '';
+        dataStore.flexibilidad.forEach((item, index) => { tbody.innerHTML += `<tr><td><b>${item["Atleta"]}</b></td><td><b>${item["Resultado (cm)"]} cm</b></td><td><button class="delete-btn" onclick="deleteRow('flexibilidad', ${index})">❌ Eliminar</button></td></tr>`; });
+    }
+
+    // REGISTRO AUTOMÁTICO DEL SERVICE WORKER
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then((reg) => console.log('Service Worker activo:', reg.scope))
+                .catch((err) => console.error('Error al mapear el Service Worker:', err));
+        });
+    }
+</script>
+</body>
+</html>
